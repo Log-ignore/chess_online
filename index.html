@@ -126,7 +126,8 @@
 const $=id=>document.getElementById(id),glyph={w:{p:"♙",r:"♖",n:"♘",b:"♗",q:"♕",k:"♔"},b:{p:"♟",r:"♜",n:"♞",b:"♝",q:"♛",k:"♚"}};
 let pc=null,dc=null,role=null,me="",passwordHash="",handshakeDone=false,chess=new Chess(),selected=null,targets=[],moves=[],clocks={w:900,b:900},startedAt=0,clockTimer=null,ended=false,minutes=15,initialFen=null;
 function status(s){$("status").textContent=s;$("gameStatus").textContent=s}
-async function hashPassword(p){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(p));return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,"0")).join("")}\nfunction encode(x){return btoa(unescape(encodeURIComponent(JSON.stringify(x))))}
+async function hashPassword(p){const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(p));return [...new Uint8Array(d)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function encode(x){return btoa(unescape(encodeURIComponent(JSON.stringify(x))))}
 function decode(x){return JSON.parse(decodeURIComponent(escape(atob(x.trim()))))}
 function waitIce(){return new Promise(resolve=>{if(pc.iceGatheringState==="complete")return resolve();const fn=()=>{if(pc.iceGatheringState==="complete"){pc.removeEventListener("icegatheringstatechange",fn);resolve()}};pc.addEventListener("icegatheringstatechange",fn);setTimeout(resolve,15000)})}
 function newPeer(){pc=new RTCPeerConnection({iceServers:[]});pc.onconnectionstatechange=()=>status("接続状態: "+pc.connectionState);pc.ondatachannel=e=>bindChannel(e.channel);return pc}
