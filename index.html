@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chess Online</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#111c2e;--line:#2b3b53;--text:#e5edf8;--muted:#9fb0c7;--accent:#3b82f6;--green:#16a34a}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -20%,#1d3556,var(--bg) 55%);color:var(--text);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+button,input,select{font:inherit}button{cursor:pointer;border:1px solid var(--line);border-radius:9px;padding:10px 13px;background:#1b2a40;color:var(--text);font-weight:700}button:disabled{opacity:.4;cursor:not-allowed}button.primary{background:#2563eb;border-color:#3b82f6;color:white}button.danger{background:#4b1d2a;border-color:#793044}input,select{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px;background:#0b1525;color:var(--text)}label{display:block;font-size:.82rem;color:var(--muted);margin:10px 0 5px}.hidden{display:none!important}.wrap{max-width:1100px;margin:auto;padding:22px 16px 50px}.brand{font-size:1.6rem;font-weight:900;letter-spacing:.08em}.sub{color:var(--muted);margin:2px 0 20px}.panel{background:linear-gradient(145deg,#142137,#0f1929);border:1px solid var(--line);border-radius:15px;padding:18px;margin:14px 0;box-shadow:0 12px 35px #0003}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.status{font-size:.84rem;color:#a7f3d0;min-height:1.4em}.muted{color:var(--muted);font-size:.84rem}.row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.room-code{font:900 1.45rem ui-monospace,monospace;letter-spacing:.15em;color:#bfdbfe}.game-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}.playerbar{display:flex;justify-content:space-between;gap:10px;align-items:center;background:#142137;border:1px solid var(--line);padding:11px 14px;border-radius:10px;margin:8px 0}.clock{font:800 1.4rem ui-monospace,monospace}.clock.active{color:#86efac}.board{width:min( min(78vw,680px),calc(100vh - 230px));aspect-ratio:1;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));grid-template-rows:repeat(8,minmax(0,1fr));border:5px solid #25354b;border-radius:5px;overflow:hidden;margin:auto;touch-action:manipulation}.sq{display:flex;align-items:center;justify-content:center;position:relative;min-width:0;min-height:0;aspect-ratio:1;cursor:pointer}.sq.light{background:#e5e7eb}.sq.dark{background:#64748b}.sq.selected{box-shadow:inset 0 0 0 4px #facc15}.sq.target:after{content:"";width:26%;height:26%;border-radius:50%;background:#17255466;position:absolute}.piece{font-size:clamp(20px,5.2vw,54px);line-height:1;user-select:none;filter:drop-shadow(0 1px 1px #0007);z-index:1}.piece.w{color:#fff;text-shadow:0 1px 2px #111,0 0 2px #111}.piece.b{color:#111;text-shadow:0 0 2px #fff}.sidepanel{display:grid;gap:12px}.chatlog{height:220px;overflow:auto;background:#091321;border:1px solid var(--line);border-radius:8px;padding:9px;font-size:.84rem}.chatline{padding:5px 2px;border-bottom:1px solid #1d2a3d;overflow-wrap:anywhere}.chatline .who{color:#93c5fd;font-weight:800}.quickchat{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0}.quickchat button{font-size:.75rem;padding:8px 5px}.move-list{max-height:125px;overflow:auto;font: .8rem ui-monospace,monospace;color:#cbd5e1;overflow-wrap:anywhere}.notice{background:#2a2111;border:1px solid #695022;color:#fcd99b;padding:10px;border-radius:8px;font-size:.8rem;margin-top:12px}.configgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.endbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+@media(max-width:760px){.grid,.game-layout{grid-template-columns:1fr}.board{width:min(94vw,calc(100vh - 290px));}.sidepanel{grid-template-columns:1fr}.chatlog{height:150px}.wrap{padding:15px 10px 35px}.panel{padding:14px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header><div class="brand">CHESS ONLINE</div><div class="sub">オンライン対人戦専用 — ルーム制 / リアルタイム対局</div></header>
+<section id="configPanel" class="panel">
+<h2>接続設定</h2>
+<p class="muted">Firebase Realtime Database を使用します。Firebase プロジェクトの Web アプリ設定を入力してください。</p>
+<div class="configgrid">
+<div><label>API Key</label><input id="apiKey" autocomplete="off"></div><div><label>Auth Domain</label><input id="authDomain" placeholder="your-project.firebaseapp.com"></div>
+<div><label>Database URL</label><input id="databaseURL" placeholder="https://your-project-default-rtdb.firebaseio.com"></div><div><label>Project ID</label><input id="projectId"></div>
+<div><label>App ID</label><input id="appId"></div><div><label>表示名</label><input id="displayName" maxlength="24" placeholder="プレイヤー名"></div>
+</div>
+<div class="row" style="margin-top:12px"><button id="connectBtn" class="primary">Firebaseに接続</button><span id="connectionStatus" class="status">未接続</span></div>
+<p class="muted">設定はこのブラウザ内に保存されます。Firebase の API Key は認証秘密鍵ではありませんが、Database Rules によるアクセス制御が必要です。</p>
+</section>
+<section id="lobbyPanel" class="hidden">
+<div class="grid">
+<div class="panel"><h2>ルームを作成</h2><label>ルームパスワード</label><input id="createPassword" type="password" autocomplete="new-password" placeholder="4文字以上"><label>持ち時間</label><select id="timeControl"><option value="1,0">1 + 0</option><option value="3,0">3 + 0</option><option value="3,2">3 + 2</option><option value="5,0">5 + 0</option><option value="5,3">5 + 3</option><option value="10,0">10 + 0</option><option value="15,0" selected>15 + 0</option><option value="30,0">30 + 0</option></select><button id="createRoomBtn" class="primary" style="width:100%;margin-top:13px">ルームを作成</button></div>
+<div class="panel"><h2>ルームに参加</h2><label>ルームID</label><input id="joinRoomId" maxlength="8" placeholder="6桁のルームID"><label>ルームパスワード</label><input id="joinPassword" type="password" autocomplete="current-password"><button id="joinRoomBtn" style="width:100%;margin-top:13px">参加する</button></div>
+</div>
+</section>
+<section id="waitingPanel" class="panel hidden">
+<h2>ルーム待機中</h2><div class="room-code" id="roomCodeLabel"></div><p class="muted">相手にルームIDとパスワードを共有してください。作成者が白、参加者が黒です。</p><div id="waitingStatus" class="status">対戦相手の参加を待っています。</div><button id="leaveWaitingBtn" class="danger">ルームを退出</button>
+</section>
+<section id="gamePanel" class="hidden">
+<div class="playerbar"><div><b id="blackPlayer">黒</b><div class="muted">BLACK</div></div><div id="blackClock" class="clock">15:00</div></div>
+<div class="game-layout">
+<div><div id="board" class="board" aria-label="チェス盤"></div><div class="playerbar"><div><b id="whitePlayer">白</b><div class="muted">WHITE</div></div><div id="whiteClock" class="clock active">15:00</div></div><div id="gameStatus" class="status" style="margin-top:10px">相手の参加を待っています。</div><div class="endbar"><button id="resignBtn" class="danger">投了</button><button id="drawBtn">引き分けを提案</button><button id="leaveGameBtn">退出</button></div></div>
+<aside class="sidepanel">
+<div class="panel"><h3>コミュニケーション</h3><div id="chatLog" class="chatlog"></div><div class="quickchat" id="quickChat"><button>よろしくお願いします</button><button>お願いします</button><button>いい手ですね</button><button>なるほど</button><button>少し考えます</button><button>チェックです</button><button>ドローを提案します</button><button>ありがとうございました</button></div><div class="row"><input id="chatInput" maxlength="120" placeholder="メッセージ"><button id="sendChatBtn">送信</button></div></div>
+<div class="panel"><h3>棋譜</h3><div id="moveList" class="move-list">まだ指し手はありません。</div></div>
+</aside>
+</div>
+</section>
+<div id="globalNotice" class="muted" role="status"></div>
+</div>
+<script>
+class Chess {
+  constructor(fen){
+    this.reset();
+    if(fen && fen!==Chess.DEFAULT_POSITION && !this.load(fen)) throw new Error("Invalid FEN");
+  }
+  reset(){
+    const back="rnbqkbnr";
+    this.b=[...back].map(type=>({type,color:"b"})).concat(Array.from({length:8},()=>({type:"p",color:"b"})),Array(32).fill(null),Array.from({length:8},()=>({type:"p",color:"w"})),[...back].map(type=>({type,color:"w"})));
+    this.side="w";this.castle="KQkq";this.ep="-";this.half=0;this.full=1;this.stack=[];this.hist=[];
+  }
+  static get DEFAULT_POSITION(){return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"}
+  sq(s){if(typeof s!=="string"||!/^[a-h][1-8]$/.test(s))return -1;return (8-Number(s[1]))*8+s.charCodeAt(0)-97}
+  name(i){return String.fromCharCode(97+i%8)+(8-Math.floor(i/8))}
+  fen(){
+    let rows=[];for(let r=0;r<8;r++){let row="",empty=0;for(let c=0;c<8;c++){let p=this.b[r*8+c];if(!p)empty++;else{if(empty)row+=empty;empty=0;row+=p.color==="w"?p.type.toUpperCase():p.type}}if(empty)row+=empty;rows.push(row)}
+    return rows.join("/")+" "+this.side+" "+(this.castle||"-")+" "+this.ep+" "+this.half+" "+this.full;
+  }
+  load(f){
+    try{
+      const a=String(f).trim().split(/\s+/);if(a.length!==6||!/^[wb]$/.test(a[1]))return false;
+      const rows=a[0].split("/");if(rows.length!==8)return false;let b=[];
+      for(const row of rows){let n=0;for(const ch of row){if(/[1-8]/.test(ch)){const empty=Number(ch);n+=empty;for(let k=0;k<empty;k++)b.push(null)}else if(/[prnbqkPRNBQK]/.test(ch)){b.push({type:ch.toLowerCase(),color:ch===ch.toUpperCase()?"w":"b"});n++}else return false}if(n!==8)return false}
+      if(b.length!==64)return false;
+      this.b=b;this.side=a[1];this.castle=a[2]==="-"?"":a[2];this.ep=a[3];this.half=Number(a[4])||0;this.full=Number(a[5])||1;this.stack=[];this.hist=[];return true;
+    }catch(e){return false}
+  }
+  board(){return Array.from({length:8},(_,r)=>this.b.slice(r*8,r*8+8).map(p=>p?{...p}:null))}
+  get(s){const i=this.sq(s);return i<0||!this.b[i]?null:{...this.b[i]}}
+  turn(){return this.side}
+  attacked(target,by){
+    const tr=target>>3,tc=target&7;
+    const pawnR=tr+(by==="w"?1:-1);
+    for(const dc of [-1,1]){let c=tc+dc;if(pawnR>=0&&pawnR<8&&c>=0&&c<8){let p=this.b[pawnR*8+c];if(p&&p.color===by&&p.type==="p")return true}}
+    for(const [dr,dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]){let r=tr+dr,c=tc+dc;if(r>=0&&r<8&&c>=0&&c<8){let p=this.b[r*8+c];if(p&&p.color===by&&p.type==="n")return true}}
+    for(let dr=-1;dr<=1;dr++)for(let dc=-1;dc<=1;dc++){if(!dr&&!dc)continue;let r=tr+dr,c=tc+dc;if(r>=0&&r<8&&c>=0&&c<8){let p=this.b[r*8+c];if(p&&p.color===by&&p.type==="k")return true}}
+    for(const [dr,dc] of [[-1,-1],[-1,1],[1,-1],[1,1],[0,-1],[0,1],[-1,0],[1,0]]){let r=tr+dr,c=tc+dc,steps=1;while(r>=0&&r<8&&c>=0&&c<8){let p=this.b[r*8+c];if(p){if(p.color===by&&(p.type==="q"||(steps===1&&p.type==="k")||((dr===0||dc===0)?p.type==="r":p.type==="b")))return true;break}r+=dr;c+=dc;steps++}}
+    return false;
+  }
+  king(color=this.side){return this.b.findIndex(p=>p&&p.type==="k"&&p.color===color)}
+  in_check(){const k=this.king();return k>=0&&this.attacked(k,this.side==="w"?"b":"w")}
+  pseudo(){
+    const out=[],add=(from,to,flags="",promotion)=>{let p=this.b[from],t=this.b[to];if(!p||t&&t.color===p.color||t&&t.type==="k")return;out.push({from:this.name(from),to:this.name(to),piece:p.type,color:p.color,captured:t?.type,promotion,flags:(flags+(t?"c":"")).split("").filter((x,i,a)=>a.indexOf(x)===i).join("")})};
+    for(let i=0;i<64;i++){let p=this.b[i];if(!p||p.color!==this.side)continue;let r=i>>3,c=i&7;
+      if(p.type==="p"){let d=p.color==="w"?-1:1,start=p.color==="w"?6:1,last=p.color==="w"?0:7,nr=r+d;
+        if(nr>=0&&nr<8&&!this.b[nr*8+c]){if(nr===last){for(const pr of ["q","r","b","n"])add(i,nr*8+c,"p",pr)}else{add(i,nr*8+c);if(r===start&&!this.b[(r+2*d)*8+c])add(i,(r+2*d)*8+c,"b")}}
+        for(const dc of [-1,1]){let nc=c+dc;if(nr<0||nr>7||nc<0||nc>7)continue;let j=nr*8+nc,t=this.b[j];if(t&&t.color!==p.color){if(nr===last){for(const pr of ["q","r","b","n"])add(i,j,"p",pr)}else add(i,j)}else if(this.name(j)===this.ep){out.push({from:this.name(i),to:this.name(j),piece:"p",color:p.color,captured:"p",flags:"e"})}}
+      }else{
+        const dirs=p.type==="n"?[[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]:p.type==="k"?[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]:p.type==="b"?[[-1,-1],[-1,1],[1,-1],[1,1]]:p.type==="r"?[[-1,0],[1,0],[0,-1],[0,1]]:[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+        for(const [dr,dc] of dirs){let rr=r+dr,cc=c+dc;while(rr>=0&&rr<8&&cc>=0&&cc<8){let j=rr*8+cc;if(this.b[j]?.color===p.color)break;add(i,j);if(this.b[j]||p.type==="n"||p.type==="k")break;rr+=dr;cc+=dc}}
+      }
+    }
+    const base=this.side==="w"?60:4,enemy=this.side==="w"?"b":"w";
+    if(!this.in_check()){
+      if(this.castle.includes(this.side==="w"?"K":"k")&&!this.b[base+1]&&!this.b[base+2]&&this.b[base+3]?.type==="r"&&!this.attacked(base+1,enemy)&&!this.attacked(base+2,enemy))out.push({from:this.name(base),to:this.name(base+2),piece:"k",color:this.side,flags:"k"});
+      if(this.castle.includes(this.side==="w"?"Q":"q")&&!this.b[base-1]&&!this.b[base-2]&&!this.b[base-3]&&this.b[base-4]?.type==="r"&&!this.attacked(base-1,enemy)&&!this.attacked(base-2,enemy))out.push({from:this.name(base),to:this.name(base-2),piece:"k",color:this.side,flags:"q"});
+    }
+    return out;
+  }
+  _apply(m){
+    const f=this.sq(m.from),t=this.sq(m.to),p=this.b[f],capt=this.b[t];
+    this.stack.push({b:this.b.slice(),side:this.side,castle:this.castle,ep:this.ep,half:this.half,full:this.full,hist:this.hist.slice()});
+    this.b[f]=null;if(m.flags.includes("e"))this.b[t+(p.color==="w"?8:-8)]=null;
+    this.b[t]=m.promotion?{type:m.promotion,color:p.color}:p;
+    if(m.flags.includes("k")){this.b[t-1]=this.b[t+1];this.b[t+1]=null}
+    if(m.flags.includes("q")){this.b[t+1]=this.b[t-2];this.b[t-2]=null}
+    if(p.type==="k")this.castle=this.castle.replace(p.color==="w"?/[KQ]/g:/[kq]/g,"");
+    if(m.from==="a1"||m.to==="a1")this.castle=this.castle.replace("Q","");if(m.from==="h1"||m.to==="h1")this.castle=this.castle.replace("K","");if(m.from==="a8"||m.to==="a8")this.castle=this.castle.replace("q","");if(m.from==="h8"||m.to==="h8")this.castle=this.castle.replace("k","");
+    this.ep=p.type==="p"&&Math.abs(f-t)===16?this.name((f+t)>>1):"-";
+    this.half=p.type==="p"||capt||m.flags.includes("e")?0:this.half+1;
+    if(this.side==="b")this.full++;this.side=this.side==="w"?"b":"w";
+    return {f,t,p,capt};
+  }
+  _legal(){
+    const side=this.side,all=this.pseudo(),out=[];
+    for(const m of all){this._apply(m);const king=this.king(side),safe=king>=0&&!this.attacked(king,this.side);this.undo();if(safe)out.push(m)}
+    return out;
+  }
+  _san(m,legal){
+    const piece=m.piece.toUpperCase();let san="";
+    if(m.flags.includes("k"))san="O-O";else if(m.flags.includes("q"))san="O-O-O";else{
+      if(m.piece!=="p"){san=piece;const same=legal.filter(x=>x.piece===m.piece&&x.to===m.to&&x.from!==m.from);if(same.length){const file=same.some(x=>x.from[0]===m.from[0]),rank=same.some(x=>x.from[1]===m.from[1]);san+=!file?m.from[0]:!rank?m.from[1]:m.from}}
+      else if(m.flags.includes("c")||m.flags.includes("e"))san=m.from[0];
+      if(m.flags.includes("c")||m.flags.includes("e"))san+="x";
+      san+=m.to;if(m.promotion)san+="="+m.promotion.toUpperCase();
+    }
+    this._apply(m);if(this.in_check())san+=this.in_checkmate()?"#":"+";this.undo();return san;
+  }
+  moves(opts={}){
+    const legal=this._legal(),verbose=!!opts.verbose,filtered=opts.square?legal.filter(m=>m.from===opts.square):legal;
+    return filtered.map(m=>{const v={...m,san:this._san(m,legal)};return verbose?v:v.san});
+  }
+  move(input,opts={}){
+    const legal=this._legal();let m=null;
+    if(typeof input==="string"){const wanted=input.replace(/[!?]+/g,"").replace(/0/g,"O").replace(/[+#]$/,"");m=legal.find(x=>this._san(x,legal).replace(/[+#]$/,"")===wanted);if(!m&&opts.sloppy)m=legal.find(x=>x.from===input.slice(-2,-0)||false)}
+    else if(input&&input.from&&input.to){m=legal.find(x=>x.from===input.from&&x.to===input.to&&(!input.promotion||x.promotion===input.promotion));}
+    if(!m)return null;
+    const san=this._san(m,legal),detail={...m,san};this._apply(m);this.hist.push(san);return detail;
+  }
+  undo(){const x=this.stack.pop();if(!x)return null;this.b=x.b;this.side=x.side;this.castle=x.castle;this.ep=x.ep;this.half=x.half;this.full=x.full;this.hist=x.hist;return true}
+  history(){return this.hist.slice()}
+  in_checkmate(){return this.in_check()&&this._legal().length===0}
+  in_stalemate(){return !this.in_check()&&this._legal().length===0}
+  insufficient_material(){
+    const pieces=this.b.filter(Boolean);if(pieces.some(p=>p.type==="p"||p.type==="r"||p.type==="q"))return false;
+    const minors=pieces.filter(p=>p.type==="b"||p.type==="n");if(minors.length<=1)return true;
+    if(minors.every(p=>p.type==="b")){const colors=[];this.b.forEach((p,i)=>{if(p?.type==="b")colors.push(((i>>3)+(i&7))%2)});return colors.every(x=>x===colors[0])}
+    return false;
+  }
+}
+window.Chess=Chess;
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,signInAnonymously,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getDatabase,ref,set,get,update,onValue,push,runTransaction,serverTimestamp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js";
+const $=id=>document.getElementById(id);
+let app=null,auth=null,db=null,user=null,roomId=null,roomRef=null,roomData=null,unsubscribe=null,chatUnsub=null,myColor=null,selected=null,legal=[],localFen=null,tick=null;
+const glyph={w:{p:"♙",r:"♖",n:"♘",b:"♗",q:"♕",k:"♔"},b:{p:"♟",r:"♜",n:"♞",b:"♝",q:"♛",k:"♚"}};
+const msg=(s)=>$("globalNotice").textContent=s;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+async function hashPassword(p){const bytes=new TextEncoder().encode(p);const digest=await crypto.subtle.digest("SHA-256",bytes);return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,"0")).join("");}
+function cfg(){return {apiKey:$("apiKey").value.trim(),authDomain:$("authDomain").value.trim(),databaseURL:$("databaseURL").value.trim(),projectId:$("projectId").value.trim(),appId:$("appId").value.trim()};}
+function saveCfg(){localStorage.setItem("chessOnlineFirebase",JSON.stringify(cfg()));localStorage.setItem("chessOnlineName",$("displayName").value.trim());}
+function loadCfg(){try{const c=JSON.parse(localStorage.getItem("chessOnlineFirebase")||"{}");for(const k of Object.keys(c))if($(k))$(k).value=c[k];}catch{}$("displayName").value=localStorage.getItem("chessOnlineName")||"";}
+$("connectBtn").onclick=async()=>{try{const c=cfg();if(!c.apiKey||!c.databaseURL||!c.projectId||!c.appId)throw Error("Firebase設定の必須項目を入力してください。");saveCfg();app=initializeApp(c);auth=getAuth(app);db=getDatabase(app);await signInAnonymously(auth);onAuthStateChanged(auth,u=>{if(u){user=u;$("connectionStatus").textContent="接続済み";$("connectionStatus").style.color="#86efac";$("lobbyPanel").classList.remove("hidden");$("configPanel").classList.add("hidden");msg("匿名認証で接続しました。");}});}catch(e){$("connectionStatus").textContent="接続失敗: "+e.message;}}
+function name(){const n=$("displayName").value.trim().slice(0,24);if(!n)throw Error("表示名を入力してください。");saveCfg();return n;}
+function randomRoom(){const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];return s;}
+function newGame(minutes,increment){return {fen:new Chess().fen(),moves:[],clocks:{w:minutes*60,b:minutes*60},minutes,increment,turnStartedAt:Date.now(),started:false,result:null,updatedAt:Date.now()};}
+async function createRoom(){const n=name(),pw=$("createPassword").value;if(pw.length<4)throw Error("パスワードは4文字以上にしてください。");const [minutes,increment]=$("timeControl").value.split(",").map(Number);const id=randomRoom(),passwordHash=await hashPassword(pw);const data={meta:{passwordHash,hostUid:user.uid,createdAt:Date.now(),minutes,increment},players:{w:{uid:user.uid,name:n},b:null},game:newGame(minutes,increment)};await set(ref(db,"rooms/"+id),data);enterRoom(id,"w");}
+async function joinRoom(){const id=$("joinRoomId").value.trim().toUpperCase(),pw=$("joinPassword").value;if(!/^[A-HJ-NP-Z2-9]{6}$/.test(id))throw Error("ルームIDは6桁で入力してください。");const rr=ref(db,"rooms/"+id),snap=await get(rr);if(!snap.exists())throw Error("ルームが見つかりません。");const d=snap.val();if(await hashPassword(pw)!==d.meta.passwordHash)throw Error("パスワードが違います。");if(d.players?.b)throw Error("このルームは満員です。");const n=name();const tx=await runTransaction(rr,current=>{if(!current||current.players?.b)return;current.players.b={uid:user.uid,name:n};current.game.started=true;current.game.turnStartedAt=Date.now();return current;});if(!tx.committed)throw Error("他の参加者が先に入室しました。");enterRoom(id,"b");}
+function enterRoom(id,color){roomId=id;myColor=color;roomRef=ref(db,"rooms/"+id);$("lobbyPanel").classList.add("hidden");$("waitingPanel").classList.remove("hidden");$("gamePanel").classList.remove("hidden");$("roomCodeLabel").textContent=id;unsubscribe=onValue(roomRef,s=>{if(!s.exists()){msg("ルームが終了しました。");leaveRoom();return;}roomData=s.val();syncRoom();});const cr=ref(db,"rooms/"+id+"/chat");chatUnsub=onValue(cr,s=>{const vals=s.val()||{};$("chatLog").innerHTML=Object.values(vals).sort((a,b)=>a.at-b.at).slice(-60).map(x=>'<div class="chatline"><span class="who">'+esc(x.name)+'</span> '+esc(x.text)+'</div>').join("");$("chatLog").scrollTop=$("chatLog").scrollHeight;});}
+function syncRoom(){if(!roomData)return;const p=roomData.players||{};$("whitePlayer").textContent=p.w?.name||"白";$("blackPlayer").textContent=p.b?.name||"対戦相手を待っています";$("waitingStatus").textContent=p.b?"対戦相手が参加しました。対局中です。":"対戦相手の参加を待っています。";const g=roomData.game;if(g?.started){$("waitingPanel").classList.add("hidden");$("gamePanel").classList.remove("hidden");}const ch=new Chess(g?.fen);if(g?.fen&&g.fen!==localFen){localFen=g.fen;selected=null;legal=[];render(ch);}updateMoves(g);updateClocks(g);$("gameStatus").textContent=!g?.started?"相手の参加を待っています。":g.result?g.result.text:(ch.turn()===myColor?"あなたの手番です":"相手の手番です");$("resignBtn").disabled=!g?.started||!!g.result||ch.turn()!==myColor;$("drawBtn").disabled=!g?.started||!!g.result;}
+function render(ch){const b=ch.board();$("board").innerHTML="";for(let r=0;r<8;r++)for(let c=0;c<8;c++){const sq=String.fromCharCode(97+c)+(8-r),p=b[r][c],el=document.createElement("button");el.type="button";el.className="sq "+((r+c)%2===0?"light":"dark")+(selected===sq?" selected":"")+(legal.some(m=>m.to===sq)?" target":"");el.dataset.square=sq;if(p){const span=document.createElement("span");span.className="piece "+p.color;span.textContent=glyph[p.color][p.type];el.append(span);}el.onclick=()=>clickSquare(sq);$("board").append(el);}}
+function clickSquare(sq){if(!roomData?.game?.started||roomData.game.result||roomData.game.fen.split(" ")[1]!==myColor)return;const ch=new Chess(roomData.game.fen);if(selected&&legal.some(m=>m.to===sq)){const mv=legal.find(m=>m.to===sq);const promotion=mv.flags.includes("p")?"q":undefined;sendMove(selected,sq,promotion);selected=null;legal=[];return;}const p=ch.get(sq);if(p&&p.color===myColor){selected=sq;legal=ch.moves({square:sq,verbose:true});}else{selected=null;legal=[];}render(ch);}
+async function sendMove(from,to,promotion){const expected=roomData.game.fen;const result=await runTransaction(roomRef,current=>{if(!current?.game?.started||current.game.result||current.game.fen!==expected||current.game.fen.split(" ")[1]!==myColor)return;const g=current.game,ch=new Chess(g.fen),m=ch.move({from,to,promotion});if(!m)return;const now=Date.now(),elapsed=Math.max(0,(now-(g.turnStartedAt||now))/1000),mover=myColor;g.clocks[mover]=Math.max(0,g.clocks[mover]-elapsed)+g.increment;if(g.clocks[mover]<=0){g.result={winner:mover==="w"?"b":"w",text:(mover==="w"?"白":"黒")+"の時間切れ"};}else{g.fen=ch.fen();g.moves=[...(g.moves||[]),m.san];g.turnStartedAt=now;g.updatedAt=now;if(ch.in_checkmate())g.result={winner:mover,text:(mover==="w"?"白":"黒")+"のチェックメイト"};else if(ch.in_stalemate()||ch.insufficient_material())g.result={winner:"draw",text:"引き分け"};}return current;});if(!result.committed)msg("局面が更新されています。盤面を同期しました。");}
+function updateMoves(g){const arr=g?.moves||[];let out=[];for(let i=0;i<arr.length;i+=2)out.push((Math.floor(i/2)+1)+". "+arr[i]+(arr[i+1]?" "+arr[i+1]:""));$("moveList").textContent=out.join("　")||"まだ指し手はありません。";}
+function updateClocks(g){if(!g)return;clearInterval(tick);const draw=()=>{const ch=new Chess(g.fen),turn=ch.turn(),elapsed=g.started&&!g.result?Math.max(0,(Date.now()-(g.turnStartedAt||Date.now()))/1000):0;for(const c of ["w","b"]){const sec=Math.max(0,g.clocks[c]-(c===turn?elapsed:0));$(c==="w"?"whiteClock":"blackClock").textContent=Math.floor(sec/60)+":"+String(Math.floor(sec%60)).padStart(2,"0");$(c==="w"?"whiteClock":"blackClock").classList.toggle("active",c===turn&&!g.result);}};draw();if(g.started&&!g.result)tick=setInterval(draw,250);}
+async function sendChat(text){if(!roomId||!user)return;const t=String(text||"").trim().slice(0,120);if(!t)return;await push(ref(db,"rooms/"+roomId+"/chat"),{uid:user.uid,name:$("displayName").value.trim().slice(0,24),text:t,at:Date.now()});}
+$("quickChat").addEventListener("click",e=>{if(e.target.tagName==="BUTTON")sendChat(e.target.textContent);});
+$("sendChatBtn").onclick=()=>{sendChat($("chatInput").value);$("chatInput").value="";};$("chatInput").addEventListener("keydown",e=>{if(e.key==="Enter")$("sendChatBtn").click();});
+$("resignBtn").onclick=async()=>{if(!confirm("投了しますか？"))return;await runTransaction(roomRef,current=>{if(!current?.game||current.game.result)return;current.game.result={winner:myColor==="w"?"b":"w",text:(myColor==="w"?"白":"黒")+"の投了"};return current;});};
+$("drawBtn").onclick=()=>sendChat("引き分けを提案します");
+async function leaveRoom(){if(unsubscribe)unsubscribe();if(chatUnsub)chatUnsub();clearInterval(tick);unsubscribe=chatUnsub=null;roomId=null;roomData=null;myColor=null;localFen=null;$("gamePanel").classList.add("hidden");$("waitingPanel").classList.add("hidden");$("lobbyPanel").classList.remove("hidden");}
+$("leaveWaitingBtn").onclick=leaveRoom;$("leaveGameBtn").onclick=leaveRoom;
+$("createRoomBtn").onclick=()=>createRoom().catch(e=>msg(e.message));$("joinRoomBtn").onclick=()=>joinRoom().catch(e=>msg(e.message));
+loadCfg();
+</script>
+</body></html>
